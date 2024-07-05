@@ -1,17 +1,21 @@
-const express = require("express");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config();
+
 const app = express();
-const cors = require("cors");
-require("dotenv").config();
 
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static(path.join(path.resolve(), "public")));
+
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/views/index.html");
+  res.sendFile(path.join(path.resolve(), "views", "index.html"));
 });
 
-// Use auth routes
-
-app.use("/", require("./routes/authRoutes"));
+import userRoutes from "./routes/userRoutes.js";
+app.use("/", userRoutes);
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log("Your app is listening on port " + listener.address().port);
