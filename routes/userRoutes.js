@@ -61,6 +61,7 @@ router.get("/api/users", async (req, res) => {
 router.post("/api/users/:_id/exercises", async (req, res) => {
   try {
     const db = await setupDatabase();
+
     const userId = req.params._id;
     const { description, duration, date } = req.body;
 
@@ -70,25 +71,21 @@ router.post("/api/users/:_id/exercises", async (req, res) => {
         .json({ error: "Description and Duration are required" });
     }
 
-    const exerciseDate = date
-      ? new Date(date).toDateString()
-      : new Date().toDateString();
+    const exerciseDate = date ? new Date(date) : new Date();
 
     const result = await db.run(
       "INSERT INTO exercises (user_id, description, duration, date) VALUES (?, ?, ?, ?)",
-      [userId, description, duration, exerciseDate]
+      [userId, description, duration, exerciseDate.toISOString().split("T")[0]]
     );
 
-    const user = await db.get("SELECT username FROM users WHERE id = ?", [
-      userId,
-    ]);
-
     const insertedExercise = {
-      username: user.username,
+      _id: userId,
+      username: (
+        await db.get("SELECT username FROM users WHERE id = ?", [userId])
+      ).username,
       description,
       duration: parseInt(duration),
-      date: exerciseDate,
-      _id: userId,
+      date: exerciseDate.toDateString(),
     };
 
     res.json(insertedExercise);
@@ -97,7 +94,6 @@ router.post("/api/users/:_id/exercises", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 // GET USER LOGS
 router.get("/api/users/:_id/logs", async (req, res) => {
   try {
