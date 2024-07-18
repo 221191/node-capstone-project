@@ -94,7 +94,46 @@ router.post("/api/users/:_id/exercises", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 // GET USER LOGS
+// router.get("/api/users/:_id/logs", async (req, res) => {
+//   try {
+//     const db = await setupDatabase();
+//     const userId = req.params._id;
+//     const user = await db.get("SELECT username FROM users WHERE id = ?", [
+//       userId,
+//     ]);
+
+//     if (!user) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+
+//     const exercises = await db.all(
+//       "SELECT description, duration, date FROM exercises WHERE user_id = ?",
+//       [userId]
+//     );
+
+//     const log = exercises.map((exercise) => ({
+//       description: exercise.description,
+//       duration: parseInt(exercise.duration),
+//       date: new Date(exercise.date).toDateString(),
+//     }));
+
+//     const response = {
+//       username: user.username,
+//       count: log.length,
+//       _id: userId,
+//       log,
+//     };
+
+//     res.json(response);
+//   } catch (error) {
+//     console.error("Error getting exercise log:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
+// GET USER LOGS with optional from and limit
 router.get("/api/users/:_id/logs", async (req, res) => {
   try {
     const db = await setupDatabase();
@@ -107,10 +146,28 @@ router.get("/api/users/:_id/logs", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const exercises = await db.all(
-      "SELECT description, duration, date FROM exercises WHERE user_id = ?",
-      [userId]
-    );
+    let { from, to, limit } = req.query;
+    let exercisesQuery =
+      "SELECT description, duration, date FROM exercises WHERE user_id = ?";
+    let params = [userId];
+
+    if (from && to) {
+      exercisesQuery += " AND date BETWEEN ? AND ?";
+      params.push(from, to);
+    } else if (from) {
+      exercisesQuery += " AND date >= ?";
+      params.push(from);
+    } else if (to) {
+      exercisesQuery += " AND date <= ?";
+      params.push(to);
+    }
+
+    if (limit) {
+      exercisesQuery += " LIMIT ?";
+      params.push(parseInt(limit));
+    }
+
+    const exercises = await db.all(exercisesQuery, params);
 
     const log = exercises.map((exercise) => ({
       description: exercise.description,
@@ -124,6 +181,10 @@ router.get("/api/users/:_id/logs", async (req, res) => {
       _id: userId,
       log,
     };
+
+    if (from) response.from = from;
+    if (to) response.to = to;
+    if (limit) response.limit = parseInt(limit);
 
     res.json(response);
   } catch (error) {
