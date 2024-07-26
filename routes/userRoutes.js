@@ -131,19 +131,28 @@ router.get("/api/users/:_id/logs", async (req, res) => {
     let { from, to, limit } = req.query;
     let exercisesQuery =
       "SELECT description, duration, date FROM exercises WHERE user_id = ?";
+    let countQuery =
+      "SELECT COUNT(*) as count FROM exercises WHERE user_id = ?";
     let params = [userId];
 
     if (from && to) {
       exercisesQuery += " AND date BETWEEN ? AND ?";
+      countQuery += " AND date BETWEEN ? AND ?";
       params.push(from, to);
     } else if (from) {
       exercisesQuery += " AND date >= ?";
+      countQuery += " AND date >= ?";
       params.push(from);
     } else if (to) {
       exercisesQuery += " AND date <= ?";
+      countQuery += " AND date <= ?";
       params.push(to);
     }
 
+    const countResult = await db.get(countQuery, params);
+    const count = countResult.count;
+
+    exercisesQuery += " ORDER BY date ASC";
     if (limit) {
       exercisesQuery += " LIMIT ?";
       params.push(parseInt(limit));
@@ -159,7 +168,7 @@ router.get("/api/users/:_id/logs", async (req, res) => {
 
     const response = {
       username: user.username,
-      count: log.length,
+      count: count,
       _id: userId,
       log,
     };
